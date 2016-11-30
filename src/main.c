@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include "../include/boiddrawing.h" //??? on verra
+#include "../include/boid.h" //??? on verra
 #include <iostream>   //pour cout endl
 #include <X11/Xlib.h> //pour XInitThreads
 #include <functional> //pour bind
@@ -46,16 +46,6 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
     }
 
 }
-
-void updateBoidsOpenMP(float delta_t, float * xpos, float * ypos, float * rot)
-{
-#pragma omp parallel for
-            for(int i = 0; i < NBOIDS; i++)
-            {
-                rot[i] += delta_t * 60.0f;
-            } 
-}
-
 
 int main(int argc, char ** argv)
 {
@@ -108,7 +98,7 @@ int main(int argc, char ** argv)
 
         elapsed += clock.restart();
         while (elapsed >= update_ms) {
-            updateBoidsOpenMP(update_ms.asSeconds(), xpos, ypos, rot);
+            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), xpos, ypos, rot);
             elapsed -= update_ms;
         }
     }

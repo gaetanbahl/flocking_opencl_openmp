@@ -1,11 +1,12 @@
 #include <SFML/Graphics.hpp>
-#include "../include/boid.h" //??? on verra
+#include "../include/boid.h" // les calculs sur les boids en openmp
 #include <iostream>   //pour cout endl
 #include <X11/Xlib.h> //pour XInitThreads
 #include <functional> //pour bind
 #include <time.h>  // pour srand time null
 #include <stdlib.h>
 #include <omp.h>
+#include <stdint.h>
 
 #define NBOIDS 500
 
@@ -49,9 +50,11 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
 
 int main(int argc, char ** argv)
 {
-    int nboids = NBOIDS;
+    uint32_t nboids = NBOIDS;
     float xpos[NBOIDS];
     float ypos[NBOIDS];
+    float xvel[NBOIDS];
+    float yvel[NBOIDS];
     float rot[NBOIDS];
 
     omp_set_num_threads(4);
@@ -74,11 +77,16 @@ int main(int argc, char ** argv)
     {
         xpos[i] = (float) (rand() % win_size.x +1);
         ypos[i] = (float) (rand() % win_size.y +1);
+        rot[i] = (float) (rand() % 360 +1);
+        xvel[i] = 0.0f;
+        yvel[i] = 0.0f;
     }
 
     sf::Clock clock;
     sf::Time elapsed = clock.restart();
     const sf::Time update_ms = sf::seconds(1.f / 60.f);
+
+    int toggle = 0;
 
     while (window.isOpen())
     {
@@ -95,10 +103,13 @@ int main(int argc, char ** argv)
             std::cout << "exiting program" << std::endl;
             window.close();
         }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+            toggle = !toggle;
 
         elapsed += clock.restart();
         while (elapsed >= update_ms) {
-            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), xpos, ypos, rot);
+            std::cout << xpos[1] << " " << ypos[1] << " " << xvel[1] << " " << yvel[1] << " " << rot[1] << std::endl;
+            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), xpos, ypos, xvel, yvel, rot);
             elapsed -= update_ms;
         }
     }

@@ -1,16 +1,22 @@
 #include <SFML/Graphics.hpp>
-#include "../include/boiddrawing.h"
-#include <iostream>
-#include <X11/Xlib.h>
+#include "../include/boiddrawing.h" //??? on verra
+#include <iostream>   //pour cout endl
+#include <X11/Xlib.h> //pour XInitThreads
+#include <functional> //pour bind
+#include <time.h>  // pour srand time null
+#include <stdlib.h>
+#include <omp.h>
 
+#define NBOIDS 500
 
-
-void renderLoop(sf::RenderWindow * window)
+void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * rotations)
 {
 
     //petit triangle
     sf::CircleShape shape(10.f,3);
     //shape.setFillColor(sf::Color::Green);
+    shape.setOrigin(10.0f, 10.0f);
+    shape.setPosition(50.0f,50.0f);
 
     //chargement de la petite texture pour le triangle
     sf::Texture txtr;
@@ -30,25 +36,59 @@ void renderLoop(sf::RenderWindow * window)
     while (window->isOpen())
     {
         window->clear();
-        window->draw(shape);
+        for(int i = 0; i < nboids; i++)
+        {
+            shape.setPosition(xpositions[i], ypositions[i]);
+            shape.setRotation(rotations[i]);
+            window->draw(shape);
+        }
         window->display();
     }
 
 }
 
+void updateBoidsOpenMP(float delta_t, float * xpos, float * ypos, float * rot)
+{
+#pragma omp parallel for
+            for(int i = 0; i < NBOIDS; i++)
+            {
+                rot[i] += delta_t * 60.0f;
+            } 
+}
+
 
 int main(int argc, char ** argv)
 {
+    int nboids = NBOIDS;
+    float xpos[NBOIDS];
+    float ypos[NBOIDS];
+    float rot[NBOIDS];
+
+    omp_set_num_threads(4);
+
     //Lancement du thread de rendu
     XInitThreads();
     sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
+    window.setFramerateLimit(60);
     window.setActive(false);
-    sf::Thread thread(&renderLoop, &window);
+    sf::Thread thread(std::bind(&renderLoop, &window, nboids, xpos, ypos, rot));
     thread.launch();
 
     //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
     sf::Vector2u win_size = window.getSize();
     std::cout << "Actual window size is " <<  win_size.x << " "  << win_size.y << std::endl;
+
+    srand(time(NULL)); // :D
+
+    for(int i = 0; i < NBOIDS; i++)
+    {
+        xpos[i] = (float) (rand() % win_size.x +1);
+        ypos[i] = (float) (rand() % win_size.y +1);
+    }
+
+    sf::Clock clock;
+    sf::Time elapsed = clock.restart();
+    const sf::Time update_ms = sf::seconds(1.f / 60.f);
 
     while (window.isOpen())
     {
@@ -64,6 +104,12 @@ int main(int argc, char ** argv)
         {
             std::cout << "exiting program" << std::endl;
             window.close();
+        }
+
+        elapsed += clock.restart();
+        while (elapsed >= update_ms) {
+            updateBoidsOpenMP(update_ms.asSeconds(), xpos, ypos, rot);
+            elapsed -= update_ms;
         }
     }
 

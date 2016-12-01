@@ -7,11 +7,13 @@
 #define SEP 0.12f
 #define ALIGN 0.1f
 #define COH 0.1f
-#define EDGE 0.01f
+#define EDGE 0.1f
+#define MOUSE 0.5f
 
 #define SPEED 0.0000001f
 
 #define RANGE 40.0f
+#define MOUSERANGE 80.0f
 
 inline float distance(uint32_t i, uint32_t j, float * x, float * y)
 {
@@ -33,8 +35,13 @@ inline void normalize(float * x, float * y)
     *y /= n;
 }
 
+inline float distancexy(float x1, float y1, float x2, float y2)
+{
+    return sqrt((x1-x2)*(x1-x2) +(y1-y2)*(y1-y2));
+}
 
-void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t ymax, float * xpos, float * ypos, float * xvel, float * yvel,float * next_xpos, float * next_ypos, float * next_xvel, float * next_yvel)
+
+void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t ymax, int32_t mousex, int32_t mousey, float * xpos, float * ypos, float * xvel, float * yvel,float * next_xpos, float * next_ypos, float * next_xvel, float * next_yvel)
 {
 #pragma omp parallel for
     for(uint32_t i = 0; i < nboids; i++)
@@ -62,6 +69,9 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
 
         float edgex = 0.0f;
         float edgey = 0.0f;
+
+        float mx = 0.0f;
+        float my = 0.0f;
 
         for(uint32_t j = 0; j < nboids; j++)
         {
@@ -92,6 +102,12 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
                 edgey = RANGE - ypos[i];
             else if(ypos[i] > ymax - RANGE)
                 edgey = ymax - RANGE - ypos[i];
+
+            if(mousex > 0 && mousex < (int32_t) xmax && mousey > 0 && mousey < (int32_t) ymax && (distancexy(mousex, mousey, xpos[i],ypos[i]) < MOUSERANGE))
+            {
+                mx = mousex - xpos[i];
+                my = mousey - ypos[i];
+            }
         }
 
         if(nb_neigh > 0)
@@ -110,8 +126,14 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
             sepy /= (float) nb_neigh * -1.0f;
             normalize(&sepx, &sepy);
 
-            next_xvel[i] = xvel[i] + EDGE * edgex +  SEP * sepx + ALIGN * avg_velx + COH * avg_posx;
-            next_yvel[i] = yvel[i] + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
+            
+            normalize(&edgex, &edgey);
+            mx *= -1.0f;
+            my *= -1.0f;
+            normalize(&mx, &my);
+
+            next_xvel[i] = xvel[i] + MOUSE * mx + EDGE * edgex +  SEP * sepx + ALIGN * avg_velx + COH * avg_posx;
+            next_yvel[i] = yvel[i] + MOUSE * my + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
             normalize(next_xvel + i, next_yvel + i);
         }
 

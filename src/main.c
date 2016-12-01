@@ -129,6 +129,7 @@ int main(int argc, char ** argv)
         }
 
         sf::Vector2u win_size = window.getSize();
+        sf::Vector2i mouse = sf::Mouse::getPosition(window);
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
@@ -141,10 +142,9 @@ int main(int argc, char ** argv)
         elapsed += clock.restart();
         while (elapsed >= update_ms) {
             //std::cout << xpos[1] << " " << ypos[1] << " " << xvel[1] << " " << yvel[1] << " " << std::endl;
-            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), win_size.x, win_size.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
+            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
             elapsed -= update_ms;
         }
-        //sf::Vector2i localPosition = sf::Mouse::getPosition(window);
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
 

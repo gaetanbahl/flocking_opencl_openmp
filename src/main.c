@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <stdint.h>
+#include <math.h>
 
 #define NBOIDS 500
 

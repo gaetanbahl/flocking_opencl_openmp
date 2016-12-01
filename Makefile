@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-Wall -O -std=c++11 -fopenmp
+CFLAGS=-Wall -O3 -std=c++11 -fopenmp
 LDFLAGS=-lsfml-graphics -lsfml-window -lsfml-system -lX11 -fopenmp
 EXEC=bin/flocking
 SRCDIR=src

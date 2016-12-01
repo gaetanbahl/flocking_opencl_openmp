@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <iostream>
 
-#define SEP 0.12f
+#define SEP 0.15f
 #define ALIGN 0.1f
 #define COH 0.1f
 #define EDGE 0.1f
@@ -43,7 +43,6 @@ inline float distancexy(float x1, float y1, float x2, float y2)
 
 void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t ymax, int32_t mousex, int32_t mousey, float * xpos, float * ypos, float * xvel, float * yvel,float * next_xpos, float * next_ypos, float * next_xvel, float * next_yvel)
 {
-#pragma omp parallel for
     for(uint32_t i = 0; i < nboids; i++)
     {
         xvel[i] = next_xvel[i];
@@ -127,15 +126,16 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
             normalize(&sepx, &sepy);
 
             
-            normalize(&edgex, &edgey);
-            mx *= -1.0f;
-            my *= -1.0f;
-            normalize(&mx, &my);
-
-            next_xvel[i] = xvel[i] + MOUSE * mx + EDGE * edgex +  SEP * sepx + ALIGN * avg_velx + COH * avg_posx;
-            next_yvel[i] = yvel[i] + MOUSE * my + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
-            normalize(next_xvel + i, next_yvel + i);
         }
+
+        normalize(&edgex, &edgey);
+        mx *= -1.0f;
+        my *= -1.0f;
+        normalize(&mx, &my);
+
+        next_xvel[i] = xvel[i] + MOUSE * mx + EDGE * edgex +  SEP * sepx + ALIGN * avg_velx + COH * avg_posx;
+        next_yvel[i] = yvel[i] + MOUSE * my + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
+        normalize(next_xvel + i, next_yvel + i);
 
         next_xpos[i] = xpos[i] + next_xvel[i];
         next_ypos[i] = ypos[i] + next_yvel[i];

@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <math.h>
 
-#define NBOIDS 500
+#define NBOIDS 2000
 
 
 inline float calcRot(float x, float y)
@@ -85,7 +85,7 @@ int main(int argc, char ** argv)
     float next_xvel[NBOIDS];
     float next_yvel[NBOIDS];
 
-    omp_set_num_threads(4);
+    omp_set_num_threads(3);
 
     //Lancement du thread de rendu
     XInitThreads();

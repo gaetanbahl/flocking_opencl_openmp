@@ -10,7 +10,24 @@
 
 #define NBOIDS 500
 
-void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * rotations)
+
+inline float calcRot(float x, float y)
+{
+        if(norm(x,y) != 0.0f)
+        {
+            if(x > 0 )
+            {
+                return 180.0f - 180.0f / 3.1415 * acos(y/norm(x,y));
+            }
+            else
+            {
+                return -180.0f + 180.0f / 3.1415 * acos(y/norm(x,y));
+            }
+        }
+        return 0.0f;
+}
+
+void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * xvel, float * yvel)
 {
 
     //petit triangle
@@ -30,8 +47,15 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
     {
         std::cout << "successfully loaded texture" << std::endl;
     }
-
     shape.setTexture(&txtr);
+
+    //load font
+    sf::Font font;
+    if (!font.loadFromFile("fonts/arial.ttf"))
+    {
+        std::cout << "couldn't load font, exiting program" << std::endl;
+        return;
+    }
 
     //boucle de rendu
     while (window->isOpen())
@@ -40,12 +64,12 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
         for(int i = 0; i < nboids; i++)
         {
             shape.setPosition(xpositions[i], ypositions[i]);
-            shape.setRotation(rotations[i]);
+            shape.setRotation(calcRot(xvel[i], yvel[i]));
             window->draw(shape);
         }
+
         window->display();
     }
-
 }
 
 int main(int argc, char ** argv)
@@ -55,7 +79,10 @@ int main(int argc, char ** argv)
     float ypos[NBOIDS];
     float xvel[NBOIDS];
     float yvel[NBOIDS];
-    float rot[NBOIDS];
+    float next_xpos[NBOIDS];
+    float next_ypos[NBOIDS];
+    float next_xvel[NBOIDS];
+    float next_yvel[NBOIDS];
 
     omp_set_num_threads(4);
 
@@ -64,7 +91,7 @@ int main(int argc, char ** argv)
     sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
     window.setFramerateLimit(60);
     window.setActive(false);
-    sf::Thread thread(std::bind(&renderLoop, &window, nboids, xpos, ypos, rot));
+    sf::Thread thread(std::bind(&renderLoop, &window, nboids, xpos, ypos, xvel, yvel));
     thread.launch();
 
     //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
@@ -75,11 +102,14 @@ int main(int argc, char ** argv)
 
     for(int i = 0; i < NBOIDS; i++)
     {
-        xpos[i] = (float) (rand() % win_size.x +1);
-        ypos[i] = (float) (rand() % win_size.y +1);
-        rot[i] = (float) (rand() % 360 +1);
+        next_xpos[i] = (float) (rand() % win_size.x +1);
+        next_ypos[i] = (float) (rand() % win_size.y +1);
         xvel[i] = 0.0f;
         yvel[i] = 0.0f;
+        next_xvel[i] = 0.0f;
+        next_yvel[i] = 0.0f;
+        xpos[i] = 0.0f;
+        ypos[i] = 0.0f;
     }
 
     sf::Clock clock;
@@ -97,6 +127,7 @@ int main(int argc, char ** argv)
                 window.close();
         }
 
+        sf::Vector2u win_size = window.getSize();
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
@@ -108,10 +139,12 @@ int main(int argc, char ** argv)
 
         elapsed += clock.restart();
         while (elapsed >= update_ms) {
-            std::cout << xpos[1] << " " << ypos[1] << " " << xvel[1] << " " << yvel[1] << " " << rot[1] << std::endl;
-            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), xpos, ypos, xvel, yvel, rot);
+            //std::cout << xpos[1] << " " << ypos[1] << " " << xvel[1] << " " << yvel[1] << " " << std::endl;
+            updateBoidsOpenMP(NBOIDS, update_ms.asSeconds(), win_size.x, win_size.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
             elapsed -= update_ms;
         }
+        //sf::Vector2i localPosition = sf::Mouse::getPosition(window);
+        //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
 
     return 0;

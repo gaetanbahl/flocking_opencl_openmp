@@ -4,13 +4,13 @@
 #include <stdint.h>
 #include <iostream>
 
-#define SEP 0.15f
+#define SEP 0.12f
 #define ALIGN 0.1f
 #define COH 0.1f
 #define EDGE 0.1f
 #define MOUSE 0.5f
 
-#define SPEED 0.0000001f
+#define SPEED 50.0f
 
 #define RANGE 40.0f
 #define MOUSERANGE 80.0f
@@ -137,8 +137,8 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
         next_yvel[i] = yvel[i] + MOUSE * my + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
         normalize(next_xvel + i, next_yvel + i);
 
-        next_xpos[i] = xpos[i] + next_xvel[i];
-        next_ypos[i] = ypos[i] + next_yvel[i];
+        next_xpos[i] = xpos[i] + delta_t * SPEED * next_xvel[i];
+        next_ypos[i] = ypos[i] + delta_t * SPEED * next_yvel[i];
 
     } 
 }

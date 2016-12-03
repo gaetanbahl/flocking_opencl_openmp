@@ -10,7 +10,6 @@
 #include <math.h>
 #include <libconfig.h++>
 
-
 using namespace libconfig;
 
 inline float calcRot(float x, float y)
@@ -75,30 +74,39 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
 
 int main(int argc, char ** argv)
 {
-    uint32_t nboids;
+    struct conf_t conf;
 
     std::cout << "Reading config file" << std::endl;
     Config cfg;
     cfg.readFile("config/config.cfg");
-    cfg.lookupValue("nboids", nboids);
+    cfg.lookupValue("nboids", conf.nboids);
+    cfg.lookupValue("sep", conf.sep);
+    cfg.lookupValue("align", conf.align);
+    cfg.lookupValue("coh", conf.coh);
+    cfg.lookupValue("edge", conf.edge);
+    cfg.lookupValue("mouse", conf.mouse);
+    cfg.lookupValue("speed", conf.speed);
+    cfg.lookupValue("range", conf.range);
+    cfg.lookupValue("mouserange", conf.mouserange);
+    cfg.lookupValue("numthreads", conf.numthreads);
 
-    float * xpos = (float *) malloc(sizeof(float)*nboids);
-    float * ypos = (float *) malloc(sizeof(float)*nboids);
-    float * xvel = (float *) malloc(sizeof(float)*nboids);
-    float * yvel = (float *) malloc(sizeof(float)*nboids);
-    float * next_xpos = (float *) malloc(sizeof(float)*nboids);
-    float * next_ypos = (float *) malloc(sizeof(float)*nboids);
-    float * next_xvel = (float *) malloc(sizeof(float)*nboids);
-    float * next_yvel = (float *) malloc(sizeof(float)*nboids);
+    float * xpos = (float *) malloc(sizeof(float)*conf.nboids);
+    float * ypos = (float *) malloc(sizeof(float)*conf.nboids);
+    float * xvel = (float *) malloc(sizeof(float)*conf.nboids);
+    float * yvel = (float *) malloc(sizeof(float)*conf.nboids);
+    float * next_xpos = (float *) malloc(sizeof(float)*conf.nboids);
+    float * next_ypos = (float *) malloc(sizeof(float)*conf.nboids);
+    float * next_xvel = (float *) malloc(sizeof(float)*conf.nboids);
+    float * next_yvel = (float *) malloc(sizeof(float)*conf.nboids);
 
-    omp_set_num_threads(3);
+    omp_set_num_threads(conf.numthreads);
 
     //Lancement du thread de rendu
     XInitThreads();
     sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
     window.setFramerateLimit(60);
     window.setActive(false);
-    sf::Thread thread(std::bind(&renderLoop, &window, nboids, xpos, ypos, xvel, yvel));
+    sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, xpos, ypos, xvel, yvel));
     thread.launch();
 
     //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
@@ -107,7 +115,7 @@ int main(int argc, char ** argv)
 
     srand(time(NULL)); // :D
 
-    for(uint32_t i = 0; i < nboids; i++)
+    for(uint32_t i = 0; i < conf.nboids; i++)
     {
         next_xpos[i] = (float) (rand() % win_size.x +1);
         next_ypos[i] = (float) (rand() % win_size.y +1);
@@ -147,7 +155,7 @@ int main(int argc, char ** argv)
         elapsed = clock.restart();
 
         if(toggle)
-            updateBoidsOpenMP(nboids, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
+            updateBoidsOpenMP(&conf, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
 

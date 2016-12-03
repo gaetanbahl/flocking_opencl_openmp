@@ -4,17 +4,6 @@
 #include <stdint.h>
 #include <iostream>
 
-#define SEP 0.12f
-#define ALIGN 0.1f
-#define COH 0.1f
-#define EDGE 0.1f
-#define MOUSE 0.5f
-
-#define SPEED 50.0f
-
-#define RANGE 40.0f
-#define MOUSERANGE 80.0f
-
 inline float distance(uint32_t i, uint32_t j, float * x, float * y)
 {
     return sqrt((x[i]-x[j])*(x[i]-x[j]) + (y[i]-y[j])*(y[i]-y[j]));
@@ -41,9 +30,9 @@ inline float distancexy(float x1, float y1, float x2, float y2)
 }
 
 
-void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t ymax, int32_t mousex, int32_t mousey, float * xpos, float * ypos, float * xvel, float * yvel,float * next_xpos, float * next_ypos, float * next_xvel, float * next_yvel)
+void updateBoidsOpenMP(struct conf_t * conf, float delta_t, uint32_t xmax, uint32_t ymax, int32_t mousex, int32_t mousey, float * xpos, float * ypos, float * xvel, float * yvel,float * next_xpos, float * next_ypos, float * next_xvel, float * next_yvel)
 {
-    for(uint32_t i = 0; i < nboids; i++)
+    for(uint32_t i = 0; i < conf->nboids; i++)
     {
         xvel[i] = next_xvel[i];
         yvel[i] = next_yvel[i];
@@ -52,7 +41,7 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
     }
 
 #pragma omp parallel for
-    for(uint32_t i = 0; i < nboids; i++)
+    for(uint32_t i = 0; i < conf->nboids; i++)
     {
 
         uint32_t nb_neigh = 0;
@@ -72,10 +61,10 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
         float mx = 0.0f;
         float my = 0.0f;
 
-        for(uint32_t j = 0; j < nboids; j++)
+        for(uint32_t j = 0; j < conf->nboids; j++)
         {
             float dist = distance(i,j,xpos,ypos);
-            if(dist < RANGE)
+            if(dist < conf->range)
             {
                 if(j==i)
                     continue;
@@ -92,17 +81,17 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
                 sepy += ypos[j] - ypos[i];
             }
             
-            if(xpos[i] < RANGE)
-                edgex = RANGE - xpos[i];
-            else if(xpos[i] > xmax - RANGE)
-                edgex = xmax - RANGE - xpos[i];
+            if(xpos[i] < conf->range)
+                edgex = conf->range - xpos[i];
+            else if(xpos[i] > xmax - conf->range)
+                edgex = xmax - conf->range - xpos[i];
 
-            if(ypos[i] < RANGE)
-                edgey = RANGE - ypos[i];
-            else if(ypos[i] > ymax - RANGE)
-                edgey = ymax - RANGE - ypos[i];
+            if(ypos[i] < conf->range)
+                edgey = conf->range - ypos[i];
+            else if(ypos[i] > ymax - conf->range)
+                edgey = ymax - conf->range - ypos[i];
 
-            if(mousex > 0 && mousex < (int32_t) xmax && mousey > 0 && mousey < (int32_t) ymax && (distancexy(mousex, mousey, xpos[i],ypos[i]) < MOUSERANGE))
+            if(mousex > 0 && mousex < (int32_t) xmax && mousey > 0 && mousey < (int32_t) ymax && (distancexy(mousex, mousey, xpos[i],ypos[i]) < conf->mouserange))
             {
                 mx = mousex - xpos[i];
                 my = mousey - ypos[i];
@@ -133,12 +122,12 @@ void updateBoidsOpenMP(uint32_t nboids, float delta_t, uint32_t xmax, uint32_t y
         my *= -1.0f;
         normalize(&mx, &my);
 
-        next_xvel[i] = xvel[i] + MOUSE * mx + EDGE * edgex +  SEP * sepx + ALIGN * avg_velx + COH * avg_posx;
-        next_yvel[i] = yvel[i] + MOUSE * my + EDGE * edgey +  SEP * sepy + ALIGN * avg_vely + COH * avg_posy;
+        next_xvel[i] = xvel[i] + conf->mouse * mx + conf->edge * edgex +  conf->sep * sepx + conf->align * avg_velx + conf->coh * avg_posx;
+        next_yvel[i] = yvel[i] + conf->mouse * my + conf->edge * edgey +  conf->sep * sepy + conf->align * avg_vely + conf->coh * avg_posy;
         normalize(next_xvel + i, next_yvel + i);
 
-        next_xpos[i] = xpos[i] + delta_t * SPEED * next_xvel[i];
-        next_ypos[i] = ypos[i] + delta_t * SPEED * next_yvel[i];
+        next_xpos[i] = xpos[i] + delta_t * conf->speed * next_xvel[i];
+        next_ypos[i] = ypos[i] + delta_t * conf->speed * next_yvel[i];
 
     } 
 }

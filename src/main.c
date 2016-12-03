@@ -75,6 +75,7 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
 int main(int argc, char ** argv)
 {
     struct conf_t conf;
+    struct boids_t boids;
 
     std::cout << "Reading config file" << std::endl;
     Config cfg;
@@ -90,14 +91,14 @@ int main(int argc, char ** argv)
     cfg.lookupValue("mouserange", conf.mouserange);
     cfg.lookupValue("numthreads", conf.numthreads);
 
-    float * xpos = (float *) malloc(sizeof(float)*conf.nboids);
-    float * ypos = (float *) malloc(sizeof(float)*conf.nboids);
-    float * xvel = (float *) malloc(sizeof(float)*conf.nboids);
-    float * yvel = (float *) malloc(sizeof(float)*conf.nboids);
-    float * next_xpos = (float *) malloc(sizeof(float)*conf.nboids);
-    float * next_ypos = (float *) malloc(sizeof(float)*conf.nboids);
-    float * next_xvel = (float *) malloc(sizeof(float)*conf.nboids);
-    float * next_yvel = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.xpos = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.ypos = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.xvel = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.yvel = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.next_xpos = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.next_ypos = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.next_xvel = (float *) malloc(sizeof(float)*conf.nboids);
+    boids.next_yvel = (float *) malloc(sizeof(float)*conf.nboids);
 
     omp_set_num_threads(conf.numthreads);
 
@@ -106,7 +107,7 @@ int main(int argc, char ** argv)
     sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
     window.setFramerateLimit(60);
     window.setActive(false);
-    sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, xpos, ypos, xvel, yvel));
+    sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, boids.xpos, boids.ypos, boids.xvel, boids.yvel));
     thread.launch();
 
     //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
@@ -117,14 +118,14 @@ int main(int argc, char ** argv)
 
     for(uint32_t i = 0; i < conf.nboids; i++)
     {
-        next_xpos[i] = (float) (rand() % win_size.x +1);
-        next_ypos[i] = (float) (rand() % win_size.y +1);
-        xvel[i] = 0.0f;
-        yvel[i] = 0.0f;
-        next_xvel[i] = 0.0f;
-        next_yvel[i] = 0.0f;
-        xpos[i] = 0.0f;
-        ypos[i] = 0.0f;
+        boids.next_xpos[i] = (float) (rand() % win_size.x +1);
+        boids.next_ypos[i] = (float) (rand() % win_size.y +1);
+        boids.xvel[i] = 0.0f;
+        boids.yvel[i] = 0.0f;
+        boids.next_xvel[i] = 0.0f;
+        boids.next_yvel[i] = 0.0f;
+        boids.xpos[i] = 0.0f;
+        boids.ypos[i] = 0.0f;
     }
 
     sf::Clock clock;
@@ -155,18 +156,18 @@ int main(int argc, char ** argv)
         elapsed = clock.restart();
 
         if(toggle)
-            updateBoidsOpenMP(&conf, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, xpos, ypos, xvel, yvel, next_xpos, next_ypos, next_xvel, next_yvel);
+            updateBoidsOpenMP(&conf, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, &boids);
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
 
-    delete[] xpos; 
-    delete[] ypos; 
-    delete[] xvel; 
-    delete[] yvel; 
-    delete[] next_xpos; 
-    delete[] next_ypos; 
-    delete[] next_xvel; 
-    delete[] next_yvel; 
+    delete[] boids.xpos; 
+    delete[] boids.ypos; 
+    delete[] boids.xvel; 
+    delete[] boids.yvel; 
+    delete[] boids.next_xpos; 
+    delete[] boids.next_ypos; 
+    delete[] boids.next_xvel; 
+    delete[] boids.next_yvel; 
     
     return 0;
 }

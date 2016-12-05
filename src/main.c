@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <math.h>
 #include <libconfig.h++>
+#include "../include/common/oclobject.hpp"
+#include "../include/common/utils.h"
+#include "../include/common/cmdparser.hpp"
+#include "../include/common/basic.hpp"
 
 using namespace libconfig;
 
@@ -26,6 +30,33 @@ inline float calcRot(float x, float y)
             }
         }
         return 0.0f;
+}
+
+void readConfigFile(struct conf_t * conf, struct boids_t * boids)
+{
+    Config cfg;
+    cfg.readFile("config/config.cfg");
+    cfg.lookupValue("nboids", conf->nboids);
+    cfg.lookupValue("sep", conf->sep);
+    cfg.lookupValue("align", conf->align);
+    cfg.lookupValue("coh", conf->coh);
+    cfg.lookupValue("edge", conf->edge);
+    cfg.lookupValue("mouse", conf->mouse);
+    cfg.lookupValue("speed", conf->speed);
+    cfg.lookupValue("range", conf->range);
+    cfg.lookupValue("mouserange", conf->mouserange);
+    cfg.lookupValue("numthreads", conf->numthreads);
+
+    boids->xpos = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->ypos = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->xvel = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->yvel = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->next_xpos = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->next_ypos = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->next_xvel = (float *) malloc(sizeof(float)*conf->nboids);
+    boids->next_yvel = (float *) malloc(sizeof(float)*conf->nboids);
+
+    return;
 }
 
 void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * xvel, float * yvel)
@@ -72,35 +103,30 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
     }
 }
 
-int main(int argc, char ** argv)
+int main(int argc, const char ** argv)
 {
-    struct conf_t conf;
-    struct boids_t boids;
 
     std::cout << "Reading config file" << std::endl;
-    Config cfg;
-    cfg.readFile("config/config.cfg");
-    cfg.lookupValue("nboids", conf.nboids);
-    cfg.lookupValue("sep", conf.sep);
-    cfg.lookupValue("align", conf.align);
-    cfg.lookupValue("coh", conf.coh);
-    cfg.lookupValue("edge", conf.edge);
-    cfg.lookupValue("mouse", conf.mouse);
-    cfg.lookupValue("speed", conf.speed);
-    cfg.lookupValue("range", conf.range);
-    cfg.lookupValue("mouserange", conf.mouserange);
-    cfg.lookupValue("numthreads", conf.numthreads);
-
-    boids.xpos = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.ypos = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.xvel = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.yvel = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.next_xpos = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.next_ypos = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.next_xvel = (float *) malloc(sizeof(float)*conf.nboids);
-    boids.next_yvel = (float *) malloc(sizeof(float)*conf.nboids);
+    struct conf_t conf;
+    struct boids_t boids;
+    readConfigFile(&conf,&boids);
 
     omp_set_num_threads(conf.numthreads);
+
+    CmdParserCommon cmdparser(argc, argv);
+    cmdparser.parse();
+    if(cmdparser.help.isSet())
+        return 0;
+
+    OpenCLBasic oclobjects(
+        cmdparser.platform.getValue(),
+        cmdparser.device_type.getValue(),
+        cmdparser.device.getValue()
+    );
+
+    char kernelBuildArgs[20];
+    sprintf(kernelBuildArgs, "-DNBOIDS=%d", conf.nboids);
+    OpenCLProgramOneKernel executable(oclobjects, L"kernels/BoidsKernels.cl","","Boids",kernelBuildArgs);
 
     //Lancement du thread de rendu
     XInitThreads();

@@ -3,6 +3,10 @@
 #include <math.h>
 #include <stdint.h>
 #include <iostream>
+#include "../include/common/oclobject.hpp"
+#include "../include/common/utils.h"
+#include "../include/common/cmdparser.hpp"
+#include "../include/common/basic.hpp"
 
 inline float distance(uint32_t i, uint32_t j, float * x, float * y)
 {

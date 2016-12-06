@@ -59,7 +59,7 @@ void readConfigFile(struct conf_t * conf, struct boids_t * boids)
     return;
 }
 
-void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * xvel, float * yvel)
+void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float * ypositions, float * xvel, float * yvel, int * opencl)
 {
     //petit triangle
     sf::CircleShape shape(10.f,3);
@@ -98,18 +98,45 @@ void renderLoop(sf::RenderWindow * window, int nboids, float * xpositions, float
             shape.setRotation(calcRot(xvel[i], yvel[i]));
             window->draw(shape);
         }
-
         window->display();
     }
 }
 
 int main(int argc, const char ** argv)
 {
+    int toggle = 0;
 
     std::cout << "Reading config file" << std::endl;
     struct conf_t conf;
     struct boids_t boids;
     readConfigFile(&conf,&boids);
+
+    //Lancement du thread de rendu
+    std::cout << "Launching render thread" << std::endl;
+    XInitThreads();
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
+    window.setFramerateLimit(60);
+    window.setActive(false);
+    sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, boids.xpos, boids.ypos, boids.xvel, boids.yvel, &toggle));
+    thread.launch();
+
+    //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
+    sf::Vector2u win_size = window.getSize();
+    std::cout << "Actual window size is " <<  win_size.x << " "  << win_size.y << std::endl;
+
+    srand(time(NULL)); // :D
+
+    for(uint32_t i = 0; i < conf.nboids; i++)
+    {
+        boids.next_xpos[i] = (float) (rand() % win_size.x +1);
+        boids.next_ypos[i] = (float) (rand() % win_size.y +1);
+        boids.xvel[i] = 0.0f;
+        boids.yvel[i] = 0.0f;
+        boids.next_xvel[i] = 0.0f;
+        boids.next_yvel[i] = 0.0f;
+        boids.xpos[i] = 0.0f;
+        boids.ypos[i] = 0.0f;
+    }
 
     omp_set_num_threads(conf.numthreads);
 
@@ -138,7 +165,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.xpos,
             &err
@@ -149,7 +176,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.ypos,
             &err
@@ -160,7 +187,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.xvel,
             &err
@@ -171,7 +198,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.yvel,
             &err
@@ -182,7 +209,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.next_xpos,
             &err
@@ -193,9 +220,9 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
-            boids.next_xpos,
+            boids.next_ypos,
             &err
         );
     SAMPLE_CHECK_ERRORS(err);
@@ -204,7 +231,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.next_xvel,
             &err
@@ -215,7 +242,7 @@ int main(int argc, const char ** argv)
         clCreateBuffer
         (
             oclobjects.context,
-            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR,
             conf.nboids * sizeof(cl_float),
             boids.next_yvel,
             &err
@@ -240,38 +267,14 @@ int main(int argc, const char ** argv)
     err = clSetKernelArg(executable.kernel, 7, sizeof(cl_mem), (void *) &cl_next_yvel);
     SAMPLE_CHECK_ERRORS(err);
 
+    cl_event eventcl;
 
-    //Lancement du thread de rendu
-    std::cout << "Launching render thread" << std::endl;
-    XInitThreads();
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
-    window.setFramerateLimit(60);
-    window.setActive(false);
-    sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, boids.xpos, boids.ypos, boids.xvel, boids.yvel));
-    thread.launch();
-
-    //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
-    sf::Vector2u win_size = window.getSize();
-    std::cout << "Actual window size is " <<  win_size.x << " "  << win_size.y << std::endl;
-
-    srand(time(NULL)); // :D
-
-    for(uint32_t i = 0; i < conf.nboids; i++)
-    {
-        boids.next_xpos[i] = (float) (rand() % win_size.x +1);
-        boids.next_ypos[i] = (float) (rand() % win_size.y +1);
-        boids.xvel[i] = 0.0f;
-        boids.yvel[i] = 0.0f;
-        boids.next_xvel[i] = 0.0f;
-        boids.next_yvel[i] = 0.0f;
-        boids.xpos[i] = 0.0f;
-        boids.ypos[i] = 0.0f;
-    }
+    size_t global_work_size[1] = {(size_t)conf.nboids};
 
     sf::Clock clock;
     sf::Time elapsed = clock.restart();
-
-    int toggle = 1;
+    
+    int key = false;
 
     while (window.isOpen())
     {
@@ -291,27 +294,57 @@ int main(int argc, const char ** argv)
             window.close();
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-            toggle = !toggle;
+        {
+            if(!key)
+            {
+                toggle = !toggle;
+                if(toggle)
+                    std::cout << "using OpenMP" << std::endl;
+                else
+                    std::cout << "using OpenCL" << std::endl;
+            }
+            key = true;
+        }
+        else
+        {
+            key = false;
+        }
 
         elapsed = clock.restart();
 
         if(toggle)
-            updateBoidsOpenMP(&conf, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, &boids);
-        else 
         {
             for(uint32_t i = 0; i < conf.nboids; i++)
             {
-                boids.xvel[i] = boids.next_xvel[i];
-                boids.yvel[i] = boids.next_yvel[i];
                 boids.xpos[i] = boids.next_xpos[i];
                 boids.ypos[i] = boids.next_ypos[i];
+                boids.xvel[i] = boids.next_xvel[i];
+                boids.yvel[i] = boids.next_yvel[i];
             }
-            cl_event eventcl;
-            std::cout << "launching OpenCL Kernel" << std::endl;
-            err = clEnqueueNDRangeKernel(oclobjects.queue, executable.kernel,1, NULL, (const size_t*) &conf.nboids, NULL, 0, NULL, &eventcl);
+            updateBoidsOpenMP(&conf, conf.nboids * 0.00001f, 800, 600, 0, 0, &boids);
+        }
+        else 
+        {
+            clEnqueueCopyBuffer(oclobjects.queue, cl_next_xpos, cl_xpos, 0, 0, conf.nboids * sizeof(float), 0, NULL, NULL);
+            clEnqueueCopyBuffer(oclobjects.queue, cl_next_ypos, cl_ypos, 0, 0, conf.nboids * sizeof(float), 0, NULL, NULL);
+            clEnqueueCopyBuffer(oclobjects.queue, cl_next_xvel, cl_xvel, 0, 0, conf.nboids * sizeof(float), 0, NULL, NULL);
+            clEnqueueCopyBuffer(oclobjects.queue, cl_next_yvel, cl_yvel, 0, 0, conf.nboids * sizeof(float), 0, NULL, NULL);
+            clFinish(oclobjects.queue);
+
+            err = clEnqueueNDRangeKernel(oclobjects.queue, executable.kernel,1, NULL, global_work_size, NULL, 0, NULL, NULL);
             SAMPLE_CHECK_ERRORS(err);
-            std::cout << "waiting for OpenCL Kernel" << std::endl;
-            clWaitForEvents(1,&eventcl);
+            clFinish(oclobjects.queue);
+
+            clEnqueueReadBuffer(oclobjects.queue, cl_xpos, CL_FALSE,0, conf.nboids*sizeof(float), boids.xpos,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_ypos, CL_FALSE,0, conf.nboids*sizeof(float), boids.ypos,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_xvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.xvel,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_yvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.yvel,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_xpos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xpos,1,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_ypos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_ypos,1,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_xvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xvel,1,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_yvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_yvel,1,NULL, NULL); 
+            clFinish(oclobjects.queue);
+
         }
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
@@ -324,6 +357,25 @@ int main(int argc, const char ** argv)
     delete[] boids.next_ypos; 
     delete[] boids.next_xvel; 
     delete[] boids.next_yvel; 
+
+    err=clFinish(oclobjects.queue);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_xpos);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_ypos);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_xvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_yvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_next_xpos);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_next_ypos);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_next_xvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err=clReleaseMemObject(cl_next_yvel);
+    SAMPLE_CHECK_ERRORS(err);
     
     return 0;
 }

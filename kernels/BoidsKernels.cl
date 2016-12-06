@@ -46,7 +46,6 @@ __kernel void Boids(
     __global float* next_yvel
 ) {
     const int i = get_global_id(0);
-    xpos[i] = NBOIDS; 
 
     const float sep = 0.13f;
     const float align = 0.105f;
@@ -56,7 +55,7 @@ __kernel void Boids(
     const float speed = 50.0f;
     const float range = 40.0f;
     const float mouserange = 80.0f;
-    const delta_t = 0.1f;
+    const float delta_t = NBOIDS * 0.00001f;
     int xmax = 800;
     int ymax = 600;
     int mousex = 0;

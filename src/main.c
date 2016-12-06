@@ -154,8 +154,8 @@ int main(int argc, const char ** argv)
     );
 
     std::cout << "Compiling OpenCL Kernel" << std::endl;
-    char kernelBuildArgs[20];
-    sprintf(kernelBuildArgs, "-DNBOIDS=%d", conf.nboids);
+    char kernelBuildArgs[200];
+    sprintf(kernelBuildArgs, "-DNBOIDS=%d -DSEP=%f -DALIGN=%f -DCOH=%f -DEDGE=%f -DMOUSE=%f -DSPEED=%f -DRANGE=%f -DMOUSERANGE=%f", conf.nboids, conf.sep, conf.align, conf.coh, conf.edge, conf.mouse, conf.speed, conf.range, conf.mouserange);
     OpenCLProgramOneKernel executable(oclobjects, L"kernels/BoidsKernels.cl","","Boids",kernelBuildArgs);
 
     cl_int err = CL_SUCCESS;
@@ -339,10 +339,10 @@ int main(int argc, const char ** argv)
             clEnqueueReadBuffer(oclobjects.queue, cl_ypos, CL_FALSE,0, conf.nboids*sizeof(float), boids.ypos,0,NULL, NULL); 
             clEnqueueReadBuffer(oclobjects.queue, cl_xvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.xvel,0,NULL, NULL); 
             clEnqueueReadBuffer(oclobjects.queue, cl_yvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.yvel,0,NULL, NULL); 
-            clEnqueueReadBuffer(oclobjects.queue, cl_next_xpos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xpos,1,NULL, NULL); 
-            clEnqueueReadBuffer(oclobjects.queue, cl_next_ypos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_ypos,1,NULL, NULL); 
-            clEnqueueReadBuffer(oclobjects.queue, cl_next_xvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xvel,1,NULL, NULL); 
-            clEnqueueReadBuffer(oclobjects.queue, cl_next_yvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_yvel,1,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_xpos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xpos,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_ypos, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_ypos,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_xvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_xvel,0,NULL, NULL); 
+            clEnqueueReadBuffer(oclobjects.queue, cl_next_yvel, CL_FALSE,0, conf.nboids*sizeof(float), boids.next_yvel,0,NULL, NULL); 
             clFinish(oclobjects.queue);
 
         }

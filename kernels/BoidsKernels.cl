@@ -47,14 +47,14 @@ __kernel void Boids(
 ) {
     const int i = get_global_id(0);
 
-    const float sep = 0.13f;
-    const float align = 0.105f;
-    const float coh = 0.1f;
-    const float edge = 0.1f;
-    const float mouse = 0.5f;
-    const float speed = 50.0f;
-    const float range = 40.0f;
-    const float mouserange = 80.0f;
+    const float sep = SEP;
+    const float align = ALIGN;
+    const float coh = COH ;
+    const float edge = EDGE;
+    const float mouse = MOUSE;
+    const float speed = SPEED;
+    const float range = RANGE;
+    const float mouserange = MOUSERANGE;
     const float delta_t = NBOIDS * 0.00001f;
     int xmax = 800;
     int ymax = 600;

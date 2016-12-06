@@ -113,6 +113,8 @@ int main(int argc, const char ** argv)
 
     omp_set_num_threads(conf.numthreads);
 
+    /////////// SETUP OPENCL
+    std::cout << "Creating OpenCL objects" << std::endl;
     CmdParserCommon cmdparser(argc, argv);
     cmdparser.parse();
     if(cmdparser.help.isSet())
@@ -124,11 +126,123 @@ int main(int argc, const char ** argv)
         cmdparser.device.getValue()
     );
 
+    std::cout << "Compiling OpenCL Kernel" << std::endl;
     char kernelBuildArgs[20];
     sprintf(kernelBuildArgs, "-DNBOIDS=%d", conf.nboids);
     OpenCLProgramOneKernel executable(oclobjects, L"kernels/BoidsKernels.cl","","Boids",kernelBuildArgs);
 
+    cl_int err = CL_SUCCESS;
+
+    std::cout << "Mapping OpenCL buffers" << std::endl;
+    cl_mem cl_xpos =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.xpos,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+    
+    cl_mem cl_ypos =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.ypos,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    cl_mem cl_xvel =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.xvel,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    cl_mem cl_yvel =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.yvel,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    cl_mem cl_next_xpos =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.next_xpos,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+    
+    cl_mem cl_next_ypos =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.next_xpos,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    cl_mem cl_next_xvel =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.next_xvel,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    cl_mem cl_next_yvel =
+        clCreateBuffer
+        (
+            oclobjects.context,
+            CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,
+            conf.nboids * sizeof(cl_float),
+            boids.next_yvel,
+            &err
+        );
+    SAMPLE_CHECK_ERRORS(err);
+
+    std::cout << "Setting Kernel Arguments" << std::endl;
+    err = clSetKernelArg(executable.kernel, 0, sizeof(cl_mem), (void *) &cl_xpos);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 1, sizeof(cl_mem), (void *) &cl_ypos);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 2, sizeof(cl_mem), (void *) &cl_xvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 3, sizeof(cl_mem), (void *) &cl_yvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 4, sizeof(cl_mem), (void *) &cl_next_xpos);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 5, sizeof(cl_mem), (void *) &cl_next_ypos);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 6, sizeof(cl_mem), (void *) &cl_next_xvel);
+    SAMPLE_CHECK_ERRORS(err);
+    err = clSetKernelArg(executable.kernel, 7, sizeof(cl_mem), (void *) &cl_next_yvel);
+    SAMPLE_CHECK_ERRORS(err);
+
+
     //Lancement du thread de rendu
+    std::cout << "Launching render thread" << std::endl;
     XInitThreads();
     sf::RenderWindow window(sf::VideoMode(800, 600), "Flocking Simulation");
     window.setFramerateLimit(60);
@@ -183,6 +297,22 @@ int main(int argc, const char ** argv)
 
         if(toggle)
             updateBoidsOpenMP(&conf, elapsed.asSeconds(), win_size.x, win_size.y, mouse.x, mouse.y, &boids);
+        else 
+        {
+            for(uint32_t i = 0; i < conf.nboids; i++)
+            {
+                boids.xvel[i] = boids.next_xvel[i];
+                boids.yvel[i] = boids.next_yvel[i];
+                boids.xpos[i] = boids.next_xpos[i];
+                boids.ypos[i] = boids.next_ypos[i];
+            }
+            cl_event eventcl;
+            std::cout << "launching OpenCL Kernel" << std::endl;
+            err = clEnqueueNDRangeKernel(oclobjects.queue, executable.kernel,1, NULL, (const size_t*) &conf.nboids, NULL, 0, NULL, &eventcl);
+            SAMPLE_CHECK_ERRORS(err);
+            std::cout << "waiting for OpenCL Kernel" << std::endl;
+            clWaitForEvents(1,&eventcl);
+        }
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
 

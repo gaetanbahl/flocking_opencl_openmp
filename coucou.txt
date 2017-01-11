@@ -1,0 +1,21 @@
+
+temps de chaque itération (frame/sec) / nb de threads (hors affichage)
+(normalement y = -x)
+
+temps / nb de processeurs
+a chaque fois qu'on augmente nb de processeurs, on augmente la taille du probleme (normalement c une droite)
+mais ca va decroitre
+
+
+comparer temps sequentiel vs temps parallel (sur 10 pas de temps)
+si rapport = 10, y a une partie à faire sur la partie sequentiel
+partie sequentiel = initialisation trôp bien
+
+
+Open CL:
+on fait varier la topologie
+changer work space, workflow (1d ou 2d)
+
+essayer d'expliquer pq on a pas des courbes ideales
+prendre les cas critiques (N tres grand)
+15 fevrier

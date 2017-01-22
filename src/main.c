@@ -118,7 +118,8 @@ int main(int argc, const char ** argv)
     window.setFramerateLimit(60);
     window.setActive(false);
     sf::Thread thread(std::bind(&renderLoop, &window, conf.nboids, boids.xpos, boids.ypos, boids.xvel, boids.yvel, &toggle));
-    thread.launch();
+    //DECOMMENTER POUR AFFICHER LES TRUCS
+    //thread.launch();
 
     //on garde les dimensions de la fenêtre dans un coin, ca peut être utile
     sf::Vector2u win_size = window.getSize();
@@ -275,9 +276,11 @@ int main(int argc, const char ** argv)
     sf::Time elapsed = clock.restart();
     
     int key = false;
-
-    while (window.isOpen())
+    int i = 0;
+    int max_iter = 100;
+    while (window.isOpen() && i < max_iter)
     {
+        i++;
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -310,7 +313,6 @@ int main(int argc, const char ** argv)
             key = false;
         }
 
-        elapsed = clock.restart();
 
         if(toggle)
         {
@@ -348,6 +350,9 @@ int main(int argc, const char ** argv)
         }
         //std::cout << "mouse: " << localPosition.x << ", " << localPosition.y << std::endl;
     }
+
+    elapsed = clock.restart();
+    printf("Total time: %f", elapsed.asSeconds());
 
     delete[] boids.xpos; 
     delete[] boids.ypos; 
